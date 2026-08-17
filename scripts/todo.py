@@ -141,6 +141,16 @@ def _edit(args) -> int:
         print(f"todo: {exc}", file=sys.stderr)
         return EXIT_ERROR
 
+    # If --text is provided, use it directly without invoking the editor
+    if args.text is not None:
+        try:
+            updated = todo_store.replace(path, args.selector, args.text)
+        except ValueError as exc:
+            print(f"todo: {exc}", file=sys.stderr)
+            return EXIT_ERROR
+        print(f"todo updated: {updated.text}")
+        return EXIT_OK
+
     scratch = path.parent / f".todo-edit-{item.n}.md"
     scratch.write_text(todo_store.render_item(item), encoding="utf-8")
     try:
@@ -194,6 +204,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     edit = sub.add_parser("edit", help="open an item in an editor")
     edit.add_argument("selector", help="1-based number from `list`, or a substring")
+    edit.add_argument("--text", default=None, help="replacement text (avoids opening an editor)")
     edit.set_defaults(func=_edit)
 
     show = sub.add_parser("path", help="print the todo file path")

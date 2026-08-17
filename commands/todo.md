@@ -61,9 +61,14 @@ discussed.
      ```
 
      The editor opens in a terminal overlay and the command blocks until it closes.
-     Exit code 3 means no editor or overlay is available: fall back to asking the user
-     what the item should say, then rerun with their text piped in. Exit code 4 means
-     the edit timed out; tell the user and offer to retry.
+     Exit code 3 means no editor or overlay is available: ask the user what the item
+     should say, then rerun with `--text`:
+
+     ```bash
+     python3 "${CLAUDE_PLUGIN_ROOT}/scripts/todo.py" edit <n> --text "corrected text"
+     ```
+
+     Exit code 4 means the edit timed out; tell the user and offer to retry.
    - **Mark done** — run the `done` command below and confirm.
 
 ## Finishing an item

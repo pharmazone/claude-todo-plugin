@@ -75,7 +75,7 @@ def test_list_plain_output_is_numbered(monkeypatch, tmp_path, capsys):
     run(monkeypatch, tmp_path, "add", "one")
     capsys.readouterr()
     run(monkeypatch, tmp_path, "list")
-    assert "1. one" in capsys.readouterr().out
+    assert "1. [ ] one" in capsys.readouterr().out
 
 
 def test_list_on_an_empty_file_says_so(monkeypatch, tmp_path, capsys):
@@ -141,6 +141,28 @@ def test_edit_exits_four_on_timeout(monkeypatch, tmp_path):
 
     monkeypatch.setattr(todo.editor, "edit_file", fake_edit)
     assert run(monkeypatch, tmp_path, "edit", "1") == 4
+
+
+def test_edit_with_text_replaces_without_editor(monkeypatch, tmp_path):
+    run(monkeypatch, tmp_path, "add", "original")
+    assert run(monkeypatch, tmp_path, "edit", "1", "--text", "corrected\nwith notes") == 0
+    content = (tmp_path / "TODO.md").read_text()
+    assert "- [ ] corrected\n  with notes\n" in content
+    assert "original" not in content
+
+
+def test_edit_with_text_fallback_when_no_editor(monkeypatch, tmp_path, capsys):
+    run(monkeypatch, tmp_path, "add", "original")
+
+    def fake_edit(target, **kwargs):
+        raise todo.editor.EditorUnavailable("nothing here")
+
+    monkeypatch.setattr(todo.editor, "edit_file", fake_edit)
+    # Exit code 3 indicates the user should use --text instead
+    assert run(monkeypatch, tmp_path, "edit", "1") == 3
+    # Now use the fallback with --text
+    assert run(monkeypatch, tmp_path, "edit", "1", "--text", "corrected") == 0
+    assert "- [ ] corrected" in (tmp_path / "TODO.md").read_text()
 
 
 def hook_payload(raw):
