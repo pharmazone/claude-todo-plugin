@@ -37,6 +37,8 @@ def strip_command(raw: str) -> str:
 
 
 def _add(args) -> int:
+    if args.from_hook:
+        return _add_from_hook()
     path = todo_store.resolve_path()
     try:
         item = todo_store.add(path, " ".join(args.text))
@@ -44,6 +46,48 @@ def _add(args) -> int:
         print(f"todo: {exc}", file=sys.stderr)
         return EXIT_ERROR
     print(f"todo added: {item.text}")
+    return EXIT_OK
+
+
+def _add_from_hook() -> int:
+    """Append an item from a UserPromptExpansion payload, then block expansion.
+
+    Blocking is what keeps capture free: the command never becomes an LLM turn.
+    Any failure deliberately does NOT block, so the command body reaches Claude
+    and the idea still gets recorded, just at the cost of a turn. Exit code 2 is
+    never used here; it would block the expansion and swallow that fallback.
+    """
+    try:
+        payload = json.load(sys.stdin)
+        text = strip_command(payload.get("raw_input") or "")
+    except (json.JSONDecodeError, AttributeError, TypeError) as exc:
+        print(f"todo: unreadable hook payload: {exc}", file=sys.stderr)
+        return EXIT_ERROR
+
+    if not text:
+        # A bare `/todo` opens the picker, which needs Claude. Let it through.
+        return EXIT_OK
+
+    try:
+        path = todo_store.resolve_path()
+        item = todo_store.add(path, text)
+        open_count = sum(1 for entry in todo_store.select(path) if entry.open)
+    except (OSError, ValueError) as exc:
+        print(f"todo: could not record the item: {exc}", file=sys.stderr)
+        return EXIT_ERROR
+
+    print(
+        json.dumps(
+            {
+                "hookSpecificOutput": {
+                    "hookEventName": "UserPromptExpansion",
+                    "block": True,
+                },
+                "systemMessage": f"todo added: {item.text} ({open_count} open)",
+            },
+            ensure_ascii=False,
+        )
+    )
     return EXIT_OK
 
 

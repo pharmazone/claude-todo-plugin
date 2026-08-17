@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "UserPromptExpansion": [
+      {
+        "matcher": "todo",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/scripts/todo.py\" add --from-hook",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

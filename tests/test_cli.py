@@ -141,3 +141,68 @@ def test_edit_exits_four_on_timeout(monkeypatch, tmp_path):
 
     monkeypatch.setattr(todo.editor, "edit_file", fake_edit)
     assert run(monkeypatch, tmp_path, "edit", "1") == 4
+
+
+def hook_payload(raw):
+    return json.dumps(
+        {
+            "session_id": "s",
+            "prompt_id": "p",
+            "hook_event_name": "UserPromptExpansion",
+            "command_name": "todo",
+            "raw_input": raw,
+            "expanded_prompt": "...",
+        }
+    )
+
+
+def run_hook(monkeypatch, tmp_path, stdin_text, **extra):
+    import io
+
+    for key, value in env(tmp_path, **extra).items():
+        monkeypatch.setenv(key, value)
+    monkeypatch.setattr("sys.stdin", io.StringIO(stdin_text))
+    return todo.main(["add", "--from-hook"])
+
+
+def test_hook_appends_and_blocks(monkeypatch, tmp_path, capsys):
+    assert run_hook(monkeypatch, tmp_path, hook_payload("/todo create agents")) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["hookSpecificOutput"] == {
+        "hookEventName": "UserPromptExpansion",
+        "block": True,
+    }
+    assert "create agents" in payload["systemMessage"]
+    assert "- [ ] create agents" in (tmp_path / "TODO.md").read_text()
+
+
+def test_hook_reports_the_open_count(monkeypatch, tmp_path, capsys):
+    run_hook(monkeypatch, tmp_path, hook_payload("/todo one"))
+    capsys.readouterr()
+    run_hook(monkeypatch, tmp_path, hook_payload("/todo two"))
+    assert "2 open" in json.loads(capsys.readouterr().out)["systemMessage"]
+
+
+def test_hook_does_not_block_a_bare_invocation(monkeypatch, tmp_path, capsys):
+    """`/todo` with no text must reach Claude so the picker runs."""
+    assert run_hook(monkeypatch, tmp_path, hook_payload("/todo")) == 0
+    assert capsys.readouterr().out.strip() == ""
+    assert not (tmp_path / "TODO.md").exists()
+
+
+def test_hook_does_not_block_on_malformed_json(monkeypatch, tmp_path, capsys):
+    assert run_hook(monkeypatch, tmp_path, "not json at all") == 1
+    assert "block" not in capsys.readouterr().out
+
+
+def test_hook_does_not_block_when_the_write_fails(monkeypatch, tmp_path, capsys):
+    monkeypatch.setattr(
+        todo.todo_store, "add", lambda *a, **k: (_ for _ in ()).throw(OSError("read-only"))
+    )
+    assert run_hook(monkeypatch, tmp_path, hook_payload("/todo x")) == 1
+    assert "block" not in capsys.readouterr().out
+
+
+def test_hook_handles_the_namespaced_command(monkeypatch, tmp_path, capsys):
+    assert run_hook(monkeypatch, tmp_path, hook_payload("/claude-todo:todo agents")) == 0
+    assert "- [ ] agents" in (tmp_path / "TODO.md").read_text()
