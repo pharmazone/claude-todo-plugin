@@ -1,5 +1,6 @@
 {
   "name": "claude-todo-plugin",
+  "description": "Home of claude-todo: capture an idea mid-run without costing a Claude turn, then pick it back up.",
   "owner": {
     "name": "pharmazone",
     "url": "https://github.com/pharmazone"
