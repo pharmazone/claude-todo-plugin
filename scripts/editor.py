@@ -85,7 +85,7 @@ def render_wrapper(
 
 
 def build_command(launcher: str, wrapper: Path, cwd: str) -> list[str]:
-    run_wrapper = f"sh {wrapper}"
+    run_wrapper = f"sh {shlex.quote(str(wrapper))}"
     if launcher == "agterm":
         return [
             "agtermctl", "session", "overlay", "open", run_wrapper,
@@ -140,7 +140,13 @@ def edit_file(
     wrapper.chmod(0o755)
 
     try:
-        proc = runner(build_command(launcher, wrapper, cwd), capture_output=True, text=True)
+        try:
+            proc = runner(build_command(launcher, wrapper, cwd), capture_output=True, text=True, timeout=timeout)
+        except subprocess.TimeoutExpired:
+            raise TimeoutError(
+                f"editor did not finish within {timeout:.0f}s; "
+                f"your text is still at {target}"
+            )
         if getattr(proc, "returncode", 0) != 0 and not sentinel.exists():
             detail = (getattr(proc, "stderr", "") or "").strip()
             raise EditorUnavailable(f"{launcher} could not open an overlay: {detail}")

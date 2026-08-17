@@ -96,13 +96,14 @@ def test_nothing_available_on_bare_linux():
 
 
 def test_wrapper_runs_the_editor_then_writes_the_sentinel(tmp_path):
+    import shlex
     script = editor.render_wrapper(
         ["nvim", "--clean"], tmp_path / "t.md", tmp_path / "t.done", str(tmp_path)
     )
     assert script.startswith("#!/bin/sh\n")
-    assert f"cd '{tmp_path}'" in script
-    assert f"nvim --clean '{tmp_path / 't.md'}'" in script
-    assert f"echo $? > '{tmp_path / 't.done'}'" in script
+    assert f"cd {shlex.quote(str(tmp_path))}" in script
+    assert f"nvim --clean {shlex.quote(str(tmp_path / 't.md'))}" in script
+    assert f"echo $? > {shlex.quote(str(tmp_path / 't.done'))}" in script
 
 
 def test_wrapper_quotes_awkward_paths(tmp_path):
