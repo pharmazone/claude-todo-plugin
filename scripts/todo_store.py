@@ -120,3 +120,28 @@ def find(items: list[Item], selector: str) -> Item:
     if not matches:
         raise LookupError(f"no open item matching {needle!r}")
     raise LookupError("ambiguous selector, matches: " + "; ".join(m.text for m in matches))
+
+
+def add(path: Path, text: str) -> Item:
+    collapsed = " ".join(text.split())
+    if not collapsed:
+        raise ValueError("todo text is empty")
+
+    lines = read_lines(path)
+    items = parse(lines)
+    new_line = f"- [ ] {collapsed}\n"
+
+    if not lines:
+        lines = list(NEW_FILE_HEADER)
+        lines.append(new_line)
+    elif items:
+        last = items[-1]
+        lines.insert(last.line + 1 + len(last.body), new_line)
+    else:
+        end = len(lines)
+        while end > 0 and not lines[end - 1].strip():
+            end -= 1
+        lines = lines[:end] + ["\n", new_line]
+
+    write_lines(path, lines)
+    return next(item for item in select(path) if item.text == collapsed)

@@ -115,3 +115,51 @@ def test_find_rejects_no_match(tmp_path):
 def test_unicode_survives_a_round_trip(tmp_path):
     p = write(tmp_path, "- [ ] café ☕ — naïve\n")
     assert todo_store.select(p)[0].text == "café ☕ — naïve"
+
+
+def test_add_creates_the_file_with_a_heading(tmp_path):
+    p = tmp_path / "nested" / "TODO.md"
+    todo_store.add(p, "first idea")
+    assert p.read_text(encoding="utf-8") == "# TODO\n\n- [ ] first idea\n"
+
+
+def test_add_appends_after_the_last_item(tmp_path):
+    p = write(tmp_path, SAMPLE)
+    todo_store.add(p, "new idea")
+    lines = p.read_text(encoding="utf-8").splitlines()
+    assert lines[lines.index("- [ ] fix the login redirect") + 1] == "- [ ] new idea"
+
+
+def test_add_preserves_surrounding_prose(tmp_path):
+    p = write(tmp_path, SAMPLE)
+    todo_store.add(p, "new idea")
+    text = p.read_text(encoding="utf-8")
+    assert "Some prose a human wrote." in text
+    assert "## Notes" in text
+    assert "Trailing prose." in text
+    assert "  Two players, minimax." in text
+
+
+def test_add_to_a_file_with_prose_but_no_items(tmp_path):
+    p = write(tmp_path, "# Notes\n\nJust prose.\n\n\n")
+    todo_store.add(p, "first idea")
+    assert p.read_text(encoding="utf-8") == "# Notes\n\nJust prose.\n\n- [ ] first idea\n"
+
+
+def test_add_collapses_whitespace(tmp_path):
+    p = tmp_path / "TODO.md"
+    item = todo_store.add(p, "  spread   over\n  lines  ")
+    assert item.text == "spread over lines"
+    assert "- [ ] spread over lines\n" in p.read_text(encoding="utf-8")
+
+
+def test_add_rejects_empty_text(tmp_path):
+    with pytest.raises(ValueError):
+        todo_store.add(tmp_path / "TODO.md", "   ")
+
+
+def test_add_returns_the_new_item_numbered_over_open_items(tmp_path):
+    p = write(tmp_path, SAMPLE)
+    item = todo_store.add(p, "new idea")
+    assert item.text == "new idea"
+    assert item.n == 3
