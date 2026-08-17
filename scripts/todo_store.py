@@ -20,6 +20,10 @@ NEW_FILE_HEADER = ["# TODO\n", "\n"]
 ITEM_RE = re.compile(r"^(?P<indent>[ \t]*)- \[(?P<mark>[ xX])\] (?P<text>.*)$")
 
 
+class AmbiguousSelector(LookupError):
+    """A non-numeric selector matched more than one item."""
+
+
 @dataclass
 class Item:
     n: int
@@ -119,7 +123,7 @@ def find(items: list[Item], selector: str) -> Item:
         return matches[0]
     if not matches:
         raise LookupError(f"no open item matching {needle!r}")
-    raise LookupError("ambiguous selector, matches: " + "; ".join(m.text for m in matches))
+    raise AmbiguousSelector("ambiguous selector, matches: " + "; ".join(m.text for m in matches))
 
 
 def add(path: Path, text: str) -> Item:
@@ -156,12 +160,15 @@ def mark_done(path: Path, selector: str) -> tuple[Item, bool]:
     open_items = select(path, only_open=True)
     try:
         item = find(open_items, selector)
-    except LookupError as e:
+    except AmbiguousSelector:
+        # Ambiguous among open items: never mask this by falling through to
+        # done items, however the done-item search would have resolved.
+        raise
+    except LookupError:
         # Already-done items are not in the open list. Matching one is a no-op
         # rather than an error: Claude may finish an item twice in a session.
-        # But ambiguous selectors or numeric out-of-range should still raise.
-        error_msg = str(e)
-        if selector.strip().isdigit() or "ambiguous" in error_msg:
+        # But numeric out-of-range should still raise.
+        if selector.strip().isdigit():
             raise
         done_items = [i for i in select(path, only_open=False) if i.done]
         item = find(done_items, selector)

@@ -165,6 +165,15 @@ def test_add_returns_the_new_item_numbered_over_open_items(tmp_path):
     assert item.n == 3
 
 
+def test_add_to_a_file_missing_a_trailing_newline(tmp_path):
+    p = tmp_path / "TODO.md"
+    p.write_text("# TODO\n\n- [ ] only item", encoding="utf-8")
+    todo_store.add(p, "second item")
+    text = p.read_text(encoding="utf-8")
+    assert "- [ ] only item\n- [ ] second item\n" in text
+    assert "only item- [ ]" not in text
+
+
 def test_mark_done_by_index(tmp_path):
     p = write(tmp_path, SAMPLE)
     item, changed = todo_store.mark_done(p, "2")
@@ -205,6 +214,21 @@ def test_mark_done_rejects_an_unknown_selector(tmp_path):
     p = write(tmp_path, SAMPLE)
     with pytest.raises(LookupError):
         todo_store.mark_done(p, "nothing like this")
+
+
+def test_mark_done_raises_when_ambiguous_among_open_items_even_if_a_done_item_matches(tmp_path):
+    # "add feature" matches two open items (ambiguous) and exactly one done
+    # item (unambiguous on its own). The open-item ambiguity must win: never
+    # silently fall through to the done-item search and report a false
+    # success against the wrong item.
+    p = write(
+        tmp_path,
+        "- [ ] add feature for login\n"
+        "- [ ] add feature for logout\n"
+        "- [x] add feature flag support\n",
+    )
+    with pytest.raises(LookupError, match="ambiguous"):
+        todo_store.mark_done(p, "add feature")
 
 
 def test_render_item_puts_text_first_then_body(tmp_path):
