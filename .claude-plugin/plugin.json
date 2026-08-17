@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
+  "name": "claude-todo",
+  "displayName": "Todo",
+  "version": "0.1.0",
+  "description": "Capture ideas while Claude works, then pick them back up. /todo <text> records an idea without costing a turn; /todo on its own opens a picker over what is still open.",
+  "author": { "name": "pharmazone" },
+  "homepage": "https://github.com/pharmazone/claude-todo-plugin",
+  "repository": "https://github.com/pharmazone/claude-todo-plugin",
+  "license": "MIT",
+  "keywords": ["todo", "tasks", "notes", "productivity", "workflow"],
+  "userConfig": {
+    "todo_file": {
+      "type": "string",
+      "title": "Todo file",
+      "description": "Where the todo list lives. Relative paths resolve against the project root.",
+      "default": ".claude/TODO.md"
+    },
+    "todo_editor": {
+      "type": "string",
+      "title": "Editor command",
+      "description": "Editor used by the Edit action, overriding $VISUAL and $EDITOR. Example: nvim --clean",
+      "required": false
+    }
+  }
+}

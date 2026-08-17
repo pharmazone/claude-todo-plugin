@@ -1,0 +1,16 @@
+{
+  "name": "claude-todo-plugin",
+  "owner": {
+    "name": "pharmazone",
+    "url": "https://github.com/pharmazone"
+  },
+  "plugins": [
+    {
+      "name": "claude-todo",
+      "source": "./",
+      "description": "Capture ideas while Claude works, then pick them back up.",
+      "version": "0.1.0",
+      "author": { "name": "pharmazone" }
+    }
+  ]
+}
