@@ -164,3 +164,27 @@ def mark_done(path: Path, selector: str) -> tuple[Item, bool]:
     lines[item.line] = lines[item.line].replace("- [ ]", "- [x]", 1)
     write_lines(path, lines)
     return item, True
+
+
+def render_item(item: Item) -> str:
+    return "".join(line + "\n" for line in [item.text, *item.body])
+
+
+def replace(path: Path, selector: str, blob: str) -> Item:
+    stripped = [line.strip() for line in blob.splitlines()]
+    kept = [line for line in stripped if line]
+    if not kept:
+        raise ValueError("edited text is empty; nothing was changed")
+
+    items = select(path, only_open=False)
+    for n, item in enumerate([i for i in items if i.open], start=1):
+        item.n = n
+    target = find([i for i in items if i.open], selector)
+
+    mark = "x" if target.done else " "
+    replacement = [f"- [{mark}] {kept[0]}\n"] + [f"  {line}\n" for line in kept[1:]]
+
+    lines = read_lines(path)
+    lines[target.line : target.line + 1 + len(target.body)] = replacement
+    write_lines(path, lines)
+    return Item(n=target.n, line=target.line, text=kept[0], done=target.done, body=kept[1:])

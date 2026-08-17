@@ -205,3 +205,49 @@ def test_mark_done_rejects_an_unknown_selector(tmp_path):
     p = write(tmp_path, SAMPLE)
     with pytest.raises(LookupError):
         todo_store.mark_done(p, "nothing like this")
+
+
+def test_render_item_puts_text_first_then_body(tmp_path):
+    p = write(tmp_path, SAMPLE)
+    item = todo_store.select(p)[0]
+    assert todo_store.render_item(item) == (
+        "create tik-tak-toe agents\n"
+        "Use the agent scaffold in src/agents/.\n"
+        "Two players, minimax.\n"
+    )
+
+
+def test_replace_updates_text_and_body(tmp_path):
+    p = write(tmp_path, SAMPLE)
+    todo_store.replace(p, "1", "renamed task\nfirst note\nsecond note\n")
+    text = p.read_text(encoding="utf-8")
+    assert "- [ ] renamed task\n  first note\n  second note\n" in text
+    assert "create tik-tak-toe agents" not in text
+
+
+def test_replace_can_drop_the_body(tmp_path):
+    p = write(tmp_path, SAMPLE)
+    todo_store.replace(p, "1", "just the title\n")
+    text = p.read_text(encoding="utf-8")
+    assert "- [ ] just the title\n- [x] add dark mode\n" in text
+
+
+def test_replace_can_add_a_body_to_a_bare_item(tmp_path):
+    p = write(tmp_path, SAMPLE)
+    todo_store.replace(p, "2", "fix the login redirect\nit 302s to /\n")
+    assert "- [ ] fix the login redirect\n  it 302s to /\n" in p.read_text(encoding="utf-8")
+
+
+def test_replace_preserves_surrounding_prose(tmp_path):
+    p = write(tmp_path, SAMPLE)
+    todo_store.replace(p, "1", "renamed\n")
+    text = p.read_text(encoding="utf-8")
+    assert "Some prose a human wrote." in text
+    assert "## Notes" in text
+    assert "- [x] add dark mode" in text
+
+
+def test_replace_rejects_an_empty_blob(tmp_path):
+    p = write(tmp_path, SAMPLE)
+    with pytest.raises(ValueError):
+        todo_store.replace(p, "1", "\n  \n")
