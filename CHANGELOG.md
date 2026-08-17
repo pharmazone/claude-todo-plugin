@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-08-17
+
 ### Added
 - `/todo <text>` captures an idea without costing a Claude turn.
 - `/todo` opens a picker over open items.
