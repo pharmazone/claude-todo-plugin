@@ -1,0 +1,16 @@
+[project]
+name = "claude-todo-plugin"
+version = "0.1.0"
+description = "Capture ideas while Claude Code works, then pick them back up"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+dependencies = []
+
+[dependency-groups]
+dev = ["pytest>=8.0"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["scripts"]
+addopts = "-q"
