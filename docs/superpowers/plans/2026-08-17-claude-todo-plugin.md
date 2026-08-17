@@ -136,7 +136,7 @@ Manifest validation is a pytest test (Task 10), not a separate CI step, so CI st
 - [ ] **Step 7: Verify the harness runs**
 
 Run: `cd ~/project/claude-todo-plugin && uv run pytest --collect-only`
-Expected: exits 0, collects 0 items, no import errors.
+Expected: exit code 5 (pytest's "no tests collected"), no import errors — the harness resolves and pytest runs, which is what this step verifies. `uv run pytest` returns 0 from Task 2 onward, once real tests exist.
 
 - [ ] **Step 8: Commit**
 
