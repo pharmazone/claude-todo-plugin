@@ -136,7 +136,11 @@ def add(path: Path, text: str) -> Item:
         lines.append(new_line)
     elif items:
         last = items[-1]
-        lines.insert(last.line + 1 + len(last.body), new_line)
+        insert_pos = last.line + 1 + len(last.body)
+        # Ensure the line before insertion ends with newline to avoid gluing lines
+        if insert_pos > 0 and not lines[insert_pos - 1].endswith("\n"):
+            lines[insert_pos - 1] += "\n"
+        lines.insert(insert_pos, new_line)
     else:
         end = len(lines)
         while end > 0 and not lines[end - 1].strip():
@@ -144,17 +148,20 @@ def add(path: Path, text: str) -> Item:
         lines = lines[:end] + ["\n", new_line]
 
     write_lines(path, lines)
-    return next(item for item in select(path) if item.text == collapsed)
+    # Return the last open item, which is guaranteed to be the one we just added
+    return select(path)[-1]
 
 
 def mark_done(path: Path, selector: str) -> tuple[Item, bool]:
     open_items = select(path, only_open=True)
     try:
         item = find(open_items, selector)
-    except LookupError:
+    except LookupError as e:
         # Already-done items are not in the open list. Matching one is a no-op
         # rather than an error: Claude may finish an item twice in a session.
-        if selector.strip().isdigit():
+        # But ambiguous selectors or numeric out-of-range should still raise.
+        error_msg = str(e)
+        if selector.strip().isdigit() or "ambiguous" in error_msg:
             raise
         done_items = [i for i in select(path, only_open=False) if i.done]
         item = find(done_items, selector)
