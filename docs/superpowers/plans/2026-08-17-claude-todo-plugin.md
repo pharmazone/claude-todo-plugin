@@ -949,7 +949,9 @@ def test_wrapper_runs_the_editor_then_writes_the_sentinel(tmp_path):
 def test_wrapper_quotes_awkward_paths(tmp_path):
     target = tmp_path / "it's here.md"
     script = editor.render_wrapper(["nano"], target, tmp_path / "s.done", str(tmp_path))
-    assert "'it'\"'\"'s here.md'" in script
+    # shlex.quote wraps the whole path, so the leading quote sits before the
+    # directory, not before "it".
+    assert "it'\"'\"'s here.md'" in script
 
 
 def test_build_command_agterm(tmp_path):
@@ -1142,7 +1144,7 @@ git commit -m "feat: resolve an editor and pick a terminal overlay to host it"
 
 **Interfaces:**
 - Consumes: everything from Task 6.
-- Produces: `edit_file(target, env=None, timeout=570.0, poll=0.2, runner=subprocess.run, sleep=time.sleep, clock=time.monotonic) -> int` — returns the editor's exit code. Raises `EditorUnavailable` when no launcher exists or the launcher itself fails, `TimeoutError` when the sentinel never appears.
+- Produces: `edit_file(target, env=None, timeout=570.0, poll=0.2, which=shutil.which, platform=sys.platform, runner=subprocess.run, sleep=time.sleep, clock=time.monotonic) -> int` — returns the editor's exit code. Raises `EditorUnavailable` when no launcher exists or the launcher itself fails, `TimeoutError` when the sentinel never appears.
 
 `timeout` defaults to 570s because the Bash tool that invokes this dies at 600s; the script must give up first so it can report a useful message.
 
@@ -1162,9 +1164,12 @@ class FakeRun:
     def __call__(self, cmd, **kwargs):
         self.calls.append(cmd)
         if self.sentinel_code is not None:
-            wrapper = Path(cmd[-1].replace("sh ", ""))
-            sentinel = wrapper.with_suffix("").with_suffix(".done")
-            sentinel.write_text(f"{self.sentinel_code}\n")
+            # The wrapper is not always the last argument: the agterm command
+            # ends with "--size-percent 80". Find it by suffix instead.
+            wrapper = next(
+                Path(part.replace("sh ", "")) for part in cmd if part.endswith(".command")
+            )
+            wrapper.with_suffix(".done").write_text(f"{self.sentinel_code}\n")
         return type("P", (), {"returncode": self.returncode, "stderr": "boom"})()
 
 
