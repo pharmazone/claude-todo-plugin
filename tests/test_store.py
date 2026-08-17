@@ -163,3 +163,45 @@ def test_add_returns_the_new_item_numbered_over_open_items(tmp_path):
     item = todo_store.add(p, "new idea")
     assert item.text == "new idea"
     assert item.n == 3
+
+
+def test_mark_done_by_index(tmp_path):
+    p = write(tmp_path, SAMPLE)
+    item, changed = todo_store.mark_done(p, "2")
+    assert (item.text, changed) == ("fix the login redirect", True)
+    assert "- [x] fix the login redirect" in p.read_text(encoding="utf-8")
+
+
+def test_mark_done_by_substring(tmp_path):
+    p = write(tmp_path, SAMPLE)
+    item, changed = todo_store.mark_done(p, "tik-tak")
+    assert changed is True
+    assert "- [x] create tik-tak-toe agents" in p.read_text(encoding="utf-8")
+
+
+def test_mark_done_keeps_the_body(tmp_path):
+    p = write(tmp_path, SAMPLE)
+    todo_store.mark_done(p, "tik-tak")
+    assert "  Two players, minimax." in p.read_text(encoding="utf-8")
+
+
+def test_mark_done_on_an_already_done_item_is_a_noop(tmp_path):
+    p = write(tmp_path, SAMPLE)
+    before = p.read_text(encoding="utf-8")
+    item, changed = todo_store.mark_done(p, "dark mode")
+    assert (item.text, changed) == ("add dark mode", False)
+    assert p.read_text(encoding="utf-8") == before
+
+
+def test_mark_done_preserves_surrounding_prose(tmp_path):
+    p = write(tmp_path, SAMPLE)
+    todo_store.mark_done(p, "1")
+    text = p.read_text(encoding="utf-8")
+    assert "Some prose a human wrote." in text
+    assert "## Notes" in text
+
+
+def test_mark_done_rejects_an_unknown_selector(tmp_path):
+    p = write(tmp_path, SAMPLE)
+    with pytest.raises(LookupError):
+        todo_store.mark_done(p, "nothing like this")

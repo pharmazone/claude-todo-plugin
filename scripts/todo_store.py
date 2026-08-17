@@ -145,3 +145,22 @@ def add(path: Path, text: str) -> Item:
 
     write_lines(path, lines)
     return next(item for item in select(path) if item.text == collapsed)
+
+
+def mark_done(path: Path, selector: str) -> tuple[Item, bool]:
+    open_items = select(path, only_open=True)
+    try:
+        item = find(open_items, selector)
+    except LookupError:
+        # Already-done items are not in the open list. Matching one is a no-op
+        # rather than an error: Claude may finish an item twice in a session.
+        if selector.strip().isdigit():
+            raise
+        done_items = [i for i in select(path, only_open=False) if i.done]
+        item = find(done_items, selector)
+        return item, False
+
+    lines = read_lines(path)
+    lines[item.line] = lines[item.line].replace("- [ ]", "- [x]", 1)
+    write_lines(path, lines)
+    return item, True
